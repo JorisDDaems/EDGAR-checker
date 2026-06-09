@@ -35,25 +35,24 @@ logger = logging.getLogger(__name__)
 
 def keyword_scan(client: EdgarClient, dedup: Deduplicator) -> list[Filing]:
     """
-    Zoekt 8-Ks op via anchor keywords. Een filing telt mee als:
-      - hij nog niet eerder gemeld is
-      - hij zowel een anchor als sector keyword bevat
+    Zoekt 8-Ks op via precisie-queries uit config.ALLE_QUERIES.
+    Elke query is al een gecombineerde AND-expressie (bv. '"IDIQ" "awarded"').
+    EDGAR doet full-text matching op de volledige query — geen extra filtering nodig.
     """
     gezien:   set[str]    = set()
     filings:  list[Filing] = []
 
-    for keyword in config.KEYWORDS_ANCHOR:
-        hits = client.zoek_op_keyword(keyword)
+    for query in config.ALLE_QUERIES:
+        hits = client.zoek_op_keyword(query)
         for hit in hits:
             fid = hit.get("_id", "")
             if not fid or fid in gezien or dedup.is_reeds_gemeld(fid):
                 continue
             gezien.add(fid)
 
-            if client.is_keyword_relevant(hit):
-                filing = client.parse_keyword_filing(hit, keyword)
-                filings.append(filing)
-                logger.info("Keyword hit: %s (%s)", filing.bedrijf, filing.ticker or "geen ticker")
+            filing = client.parse_keyword_filing(hit, query)
+            filings.append(filing)
+            logger.info("Keyword hit: %s (%s)", filing.bedrijf, filing.ticker or "geen ticker")
 
     logger.info("Keyword-scan: %d unieke filing(s)", len(filings))
     return filings

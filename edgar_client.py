@@ -48,11 +48,9 @@ class EdgarClient:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def parse_keyword_filing(hit: dict, keyword: str) -> Filing:
+    def parse_keyword_filing(hit: dict, query: str) -> Filing:
         src    = hit.get("_source", {})
         ticker = EdgarClient._extract_ticker(src)
-        tekst  = json.dumps(hit).lower()
-        sector_matches = [k for k in config.KEYWORDS_SECTOR if k.lower() in tekst]
 
         return Filing(
             id          = hit.get("_id", ""),
@@ -60,10 +58,7 @@ class EdgarClient:
             ticker      = ticker,
             periode     = src.get("period_of_report", ""),
             filing_type = FilingType.KEYWORD,
-            match_info  = (
-                f"Anchor: {keyword} | "
-                f"Sector: {', '.join(sector_matches[:4]) or '—'}"
-            ),
+            match_info  = f"Query: {query}",
         )
 
     @staticmethod
