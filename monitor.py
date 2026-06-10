@@ -43,7 +43,7 @@ def keyword_scan(client: EdgarClient, dedup: Deduplicator) -> list[Filing]:
     filings:  list[Filing] = []
 
     for query in config.ALLE_QUERIES:
-        hits = client.zoek_op_keyword(query)
+        hits = client.zoek_op_query(query)
         for hit in hits:
             fid = hit.get("_id", "")
             if not fid or fid in gezien or dedup.is_reeds_gemeld(fid):
