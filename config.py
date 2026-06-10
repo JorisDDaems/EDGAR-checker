@@ -22,7 +22,7 @@ GMAIL_ONTVANGER    = os.environ["GMAIL_ONTVANGER"]
 # EDGAR API
 # ---------------------------------------------------------------------------
 EDGAR_BASE_URL  = "https://efts.sec.gov/LATEST/search-index"
-LOOKBACK_DAGEN  = 1      # dagen terug om te scannen (1 = afgelopen 24u)
+LOOKBACK_DAGEN  = 7      # dagen terug om te scannen (1 = afgelopen 24u)
 REQUEST_TIMEOUT = 15     # seconden per HTTP request
 MAX_RESULTATEN  = 40     # EDGAR max per query
 
@@ -43,37 +43,33 @@ WATCHLIST_TICKERS = [
 ]
 
 # ---------------------------------------------------------------------------
-# Keyword-scan — hoge precisie
+# Keyword queries — aanhalingstekens voor exact-phrase matching
 #
-# Elke query wordt apart naar EDGAR gestuurd.
-# Een filing telt mee als de volledige query matcht — EDGAR doet full-text
-# search op de combinatie, dus je kan AND-logica inbouwen met spaties.
+# EDGAR interpreteert "phrase one" "phrase two" als:
+# beide exacte zinnen moeten aanwezig zijn in de filing.
 #
-# Groep A — bijna altijd een echte deal, weinig ruis
+# Groep A — hoge precisie, bijna altijd een echte deal
 # ---------------------------------------------------------------------------
 QUERIES_HOGE_PRECISIE = [
-    '"awarded a contract" "department of"',
+    '"awarded" "department of defense"',
+    '"awarded" "department of energy"',
     '"entered into a definitive agreement"',
-    '"memorandum of understanding" "department of"',
+    '"memorandum of understanding" "department of defense"',
+    '"memorandum of understanding" "department of energy"',
     '"memorandum of understanding" "government"',
     '"selected as" "prime contractor"',
-    '"selected as" "contractor"',
-    '"strategic investment" "equity"',
-    '"strategic investment" "stake"',
+    '"strategic investment" "equity" "defense"',
+    '"strategic investment" "equity" "nuclear"',
     '"letter of intent" "defense"',
     '"letter of intent" "nuclear"',
-    '"letter of intent" "energy"',
-    '"letter of intent" "semiconductor"',
-    '"IDIQ" "awarded"',        # Indefinite Delivery — sterkste contractvorm
-    '"IDIQ" "selected"',
-    '"sole source" "awarded"', # Geen concurrentie = bijzonder sterk signaal
+    '"IDIQ" "awarded"',
     '"sole source" "contract"',
-    '"offtake agreement"',
-    '"binding agreement" "government"',
+    '"offtake agreement" "uranium"',
+    '"offtake agreement" "rare earth"',
 ]
 
 # ---------------------------------------------------------------------------
-# Groep B — medium precisie, altijd gecombineerd met sector
+# Groep B — medium precisie
 # ---------------------------------------------------------------------------
 QUERIES_MEDIUM_PRECISIE = [
     '"government contract" "nuclear"',
@@ -81,19 +77,16 @@ QUERIES_MEDIUM_PRECISIE = [
     '"government contract" "rare earth"',
     '"government contract" "drone"',
     '"government contract" "unmanned"',
-    '"government contract" "autonomous"',
     '"government contract" "semiconductor"',
-    '"government contract" "photonics"',
-    '"government contract" "AI infrastructure"',
     '"government contract" "hypersonic"',
     '"government contract" "directed energy"',
-    '"government contract" "satellite"',
-    '"awarded contract" "department of defense"',
-    '"awarded contract" "department of energy"',
+    '"awarded contract" "navy"',
+    '"awarded contract" "air force"',
     '"equity stake" "nuclear"',
     '"equity stake" "defense"',
     '"equity stake" "semiconductor"',
-    '"equity stake" "rare earth"',
+    '"strategic partnership" "rare earth"',
+    '"strategic partnership" "critical minerals"',
 ]
 
 # ---------------------------------------------------------------------------
