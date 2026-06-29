@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import ssl
+import time
 import urllib.parse
 import urllib.request
 from datetime import date, timedelta
@@ -24,8 +25,10 @@ logger = logging.getLogger(__name__)
 class EdgarClient:
     """Thin wrapper rond de EDGAR full-text search API."""
 
-    _FORM_TYPE  = "8-K"
-    _USER_AGENT = "BAK-monitor jorisddaems@gmail.com"
+    _FORM_TYPE      = "8-K"
+    _USER_AGENT     = "BAK-monitor jorisddaems@gmail.com"
+    _MAX_RETRIES    = 4
+    _PACING_SECONDS = 0.5   # rust tussen elke request (SEC fair-use richtlijn)
 
     # ------------------------------------------------------------------
     # Publieke interface
@@ -112,21 +115,39 @@ class EdgarClient:
         logger.debug("GET %s", url)
 
         opener = self._build_opener()
-        req = urllib.request.Request(url, headers={"User-Agent": self._USER_AGENT})
-        try:
-            with opener.open(req, timeout=config.REQUEST_TIMEOUT) as resp:
-                data = json.loads(resp.read().decode())
-                hits = data.get("hits", {}).get("hits", [])
-                return [h for h in hits if self._binnen_lookback(h, startdatum)]
-        except urllib.error.HTTPError as exc:
-            logger.error("EDGAR HTTP %s voor query '%s'", exc.code, query)
-            return []
-        except urllib.error.URLError as exc:
-            logger.error("EDGAR verbindingsfout voor query '%s': %s", query, exc.reason)
-            return []
-        except json.JSONDecodeError as exc:
-            logger.error("EDGAR ongeldig JSON antwoord voor query '%s': %s", query, exc)
-            return []
+        req    = urllib.request.Request(url, headers={"User-Agent": self._USER_AGENT})
+
+        for poging in range(self._MAX_RETRIES):
+            try:
+                time.sleep(self._PACING_SECONDS)
+                with opener.open(req, timeout=config.REQUEST_TIMEOUT) as resp:
+                    data = json.loads(resp.read().decode())
+                    hits = data.get("hits", {}).get("hits", [])
+                    return [h for h in hits if self._binnen_lookback(h, startdatum)]
+
+            except urllib.error.HTTPError as exc:
+                if exc.code in (429, 500, 502, 503):
+                    wachttijd = 2 ** poging          # 1s → 2s → 4s → 8s
+                    logger.warning(
+                        "EDGAR HTTP %s voor query '%s' — poging %d/%d, wacht %ds",
+                        exc.code, query, poging + 1, self._MAX_RETRIES, wachttijd,
+                    )
+                    time.sleep(wachttijd)
+                    continue
+                # Andere HTTP-fouten (400, 404, ...) zijn niet transiënt — direct stoppen
+                logger.error("EDGAR HTTP %s voor query '%s'", exc.code, query)
+                return []
+
+            except urllib.error.URLError as exc:
+                logger.error("EDGAR verbindingsfout voor query '%s': %s", query, exc.reason)
+                return []
+
+            except json.JSONDecodeError as exc:
+                logger.error("EDGAR ongeldig JSON antwoord voor query '%s': %s", query, exc)
+                return []
+
+        logger.error("EDGAR faalde na %d pogingen voor query '%s'", self._MAX_RETRIES, query)
+        return []
 
     @staticmethod
     def _binnen_lookback(hit: dict, startdatum: str) -> bool:
